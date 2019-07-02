@@ -68,6 +68,7 @@
     <Compile Include="HandBrakeEventLogger.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="HandBrakeItemManager.cs" />
     <Compile Include="HandBrakeWorkItem.cs" />
     <Compile Include="ProjectInstaller.cs">
       <SubType>Component</SubType>

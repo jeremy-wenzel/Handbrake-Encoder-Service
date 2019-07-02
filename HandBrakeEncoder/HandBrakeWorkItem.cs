@@ -16,11 +16,14 @@
         /// </summary>
         public string EncodedFilePath { get; set; }
 
+        public string DestinationDirectory { get; private set; }
+
         public MediaType MediaType { get; set; }
 
-        public HandBrakeWorkItem(string originalFilePath, MediaType mediaType)
+        public HandBrakeWorkItem(string originalFilePath, string destinationDirectory, MediaType mediaType)
         {
             this.OriginalFilePath = originalFilePath;
+            this.DestinationDirectory = destinationDirectory;
             this.MediaType = mediaType;
         }
     }

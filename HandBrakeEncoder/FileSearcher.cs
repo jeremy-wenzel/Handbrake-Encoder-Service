@@ -10,16 +10,19 @@ namespace HandBrakeEncoder
     public class FileSearcher
     {
         private static readonly HandBrakeEventLogger logger = HandBrakeEventLogger.GetInstance();
+        private const int SEARCH_SLEEP_TIME_MS = 5000; // Wait 5 seconds before scanning again.
         private volatile object threadLock = new object();
         private Thread thread = null;
 
-        private volatile HandBrakeEncoderProcessor encoderProcessor = new HandBrakeEncoderProcessor();
+        private volatile string searchDirectory = null;
+        private volatile string destinationDirectory = null;
+        private volatile MediaType expectedMediaType;
 
-        private string searchDirectory = null;
-
-        public FileSearcher(string searchDirectory)
+        public FileSearcher(string searchDirectory, string destinationDirectory, MediaType expectedMediaType)
         {
             this.searchDirectory = searchDirectory;
+            this.destinationDirectory = destinationDirectory;
+            this.expectedMediaType = expectedMediaType;
         }
 
         /// <summary>
@@ -34,27 +37,6 @@ namespace HandBrakeEncoder
                 {
                     thread = new Thread(new ThreadStart(SearchForFiles));
                     thread.Start();
-                    encoderProcessor.StartWorkerThread();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Stops the working thread that is searching for new files.
-        /// Also stops the HandBrakeEncoderProcessor that is encoding the files
-        /// </summary>
-        /// <param name="shouldStopEncoderThread"></param>
-        public void StopWorkerThread(bool shouldStopEncoderThread)
-        {
-            lock (threadLock)
-            {
-                if (thread != null && thread.IsAlive)
-                {
-                    thread.Abort();
-                }
-                if (shouldStopEncoderThread)
-                {
-                    encoderProcessor.StopWorkerThread(true);
                 }
             }
         }
@@ -74,9 +56,32 @@ namespace HandBrakeEncoder
             {
                 string[] files = Directory.GetFiles(searchDirectory, ".mkv", SearchOption.AllDirectories);
 
+                if (files == null || files.Length == 0)
+                {
+                    // Couldn't find any files. Sleep and try again in some time
+                    Thread.Sleep(SEARCH_SLEEP_TIME_MS);
+                    continue;
+                }
+
+                // Found some items. Begin adding them to the queue
                 foreach (string filePath in files)
                 {
-                    encoderProcessor.AddWorkItem(new HandBrakeWorkItem(filePath));
+                    HandBrakeEncoderProcessor.AddWorkItem(new HandBrakeWorkItem(filePath, destinationDirectory, expectedMediaType));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Stops the working thread that is searching for new files.
+        /// Also stops the HandBrakeEncoderProcessor that is encoding the files
+        /// </summary>
+        public void StopWorkerThread()
+        {
+            lock (threadLock)
+            {
+                if (thread != null && thread.IsAlive)
+                {
+                    thread.Abort();
                 }
             }
         }

@@ -6,10 +6,12 @@ namespace HandBrakeEncoder
 {
     /// <summary>
     /// Takes items from a work queue and begins encoding them with Hand Brake.
+    /// This class should be a singleton because we only want to have one place were we are
+    /// calling Handbrake to encode
     /// </summary>
     public class HandBrakeEncoderProcessor : IDisposable
     {
-        private const int WORKER_THREAD_SLEEP_MS = 5000; // 5 seconds
+        private const int MAX_CYCLES_FOR_PROCESSING_THREAD = 100;
 
         private static readonly HandBrakeEventLogger logger = HandBrakeEventLogger.GetInstance();
         private volatile Queue<HandBrakeWorkItem> workItems = new Queue<HandBrakeWorkItem>();
@@ -20,29 +22,50 @@ namespace HandBrakeEncoder
         private volatile FileMover fileMover = new FileMover();
         public FileMover FileMover => fileMover;
 
-        public void AddWorkItem(HandBrakeWorkItem workItem)
+        private static readonly HandBrakeEncoderProcessor processor = new HandBrakeEncoderProcessor();
+
+        private HandBrakeEncoderProcessor()
+        {
+
+        }
+
+        /// <summary>
+        /// Adds the work item to the processor queue
+        /// </summary>
+        /// <param name="workItem">The work item to be processed</param>
+        public static void AddWorkItem(HandBrakeWorkItem workItem)
+        {
+            processor.AddWorkItemInternal(workItem);
+        }
+
+        /// <summary>
+        /// Adds the work item to the processor queue and kicks off a worker thread
+        /// to begin the processing if a worker thread doesn't exist
+        /// </summary>
+        /// <param name="workItem"></param>
+        private void AddWorkItemInternal(HandBrakeWorkItem workItem)
         {
             lock (workItems)
             {
                 workItems.Enqueue(workItem);
             }
+            StartWorkerThread();
         }
 
         /// <summary>
         /// Starts a working thread to begin looking for items to encode and start encoding them.
         /// It also kicks off another thread for the file move to being looking for files to move.
         /// </summary>
-        public void StartWorkerThread()
+        private void StartWorkerThread()
         {
             lock (threadLock)
             {
                 if (thread == null || !thread.IsAlive)
                 {
+                    // Only start if the thread isn't alive or if the thread doesn't exist
                     thread = new Thread(new ThreadStart(ProcessWorkQueueAndEncode));
+                    thread.Start();
                 }
-
-                thread.Start();
-                FileMover.StartWorkerThread();
             }
         }
 
@@ -51,7 +74,8 @@ namespace HandBrakeEncoder
         /// </summary>
         private void ProcessWorkQueueAndEncode()
         {
-            while (true)
+            int currentCycle = 0;
+            while (currentCycle < MAX_CYCLES_FOR_PROCESSING_THREAD)
             {
                 HandBrakeWorkItem workItem = null;
                 lock (workItems)
@@ -64,13 +88,13 @@ namespace HandBrakeEncoder
 
                 if (workItem == null)
                 {
+                    currentCycle++;
                     logger.WriteEntry("Didn't find work item. Sleeping");
-                    // Nothing to do. Take a break
-                    Thread.Sleep(WORKER_THREAD_SLEEP_MS);
                     continue;
                 }
 
-                // Found a work item. Beginning Encoding
+                // Found a work item. Beginning Encoding and reset cycle count
+                currentCycle = 0;
                 logger.WriteEntry("Found Work Item. Beginning encoding");
                 EncodeAndSendToFileMover(workItem);
                 logger.WriteEntry("Finished Encodeing");
@@ -103,10 +127,24 @@ namespace HandBrakeEncoder
         }
 
         /// <summary>
+        /// Stops the processor from encoding
+        /// </summary>
+        public static void StopProcessor()
+        {
+            processor.Dispose();
+        }
+
+        public void Dispose()
+        {
+            StopWorkerThread(); // Stop the file mover as well
+
+            // Log the other items left in the queue?
+        }
+
+        /// <summary>
         /// Stops the worker thread and if indicated stops the FileMover
         /// </summary>
-        /// <param name="shouldStopFileMover">Should we stop the fileMover worker?</param>
-        public void StopWorkerThread(bool shouldStopFileMover)
+        private void StopWorkerThread()
         {
             lock (threadLock)
             {
@@ -116,18 +154,7 @@ namespace HandBrakeEncoder
                 }
             }
 
-            if (shouldStopFileMover)
-            {
-                fileMover.StopWorkerThread();
-                fileMover.Dispose();
-            }
-        }
-
-        public void Dispose()
-        {
-            StopWorkerThread(true); // Stop the file mover as well
-
-            // Log the other items left in the queue?
+            fileMover.Dispose();
         }
     }
 }

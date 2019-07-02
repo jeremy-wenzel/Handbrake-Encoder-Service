@@ -8,17 +8,33 @@ namespace HandBrakeEncoder
 {
     public partial class HandBrakeEncoderService : ServiceBase
     {
-        private FileSearcher fileSearcher;
+        private FileSearcher movieFileSearcher;
+        private FileSearcher tvShowFileSearcher;
+
         private static readonly HandBrakeEventLogger logger = HandBrakeEventLogger.GetInstance();
+
+        private string movieSerahDirectory;
+        private string movieDestinationDirectory;
+        private string tvShowSearchDirectory;
+        private string tvShowDestinationDirectory;
 
         public HandBrakeEncoderService()
         {
             InitializeComponent();
+            InitializeSettings();
+            InitializeSearchers();
+        }
+
+        private void InitializeSettings()
+        {
             HandBrakeEventLogger.InitLogger("HandBrakeEventLoggerSrc", "HandBrakeEventLoggerLog");
+           
             try
             {
-                string searchDirectory = ConfigurationManager.AppSettings["searchDirectory"];
-                fileSearcher = new FileSearcher(searchDirectory);
+                movieSerahDirectory = ConfigurationManager.AppSettings["movieDirectory"];
+                movieDestinationDirectory = ConfigurationManager.AppSettings["movieOutputDirectory"];
+                tvShowSearchDirectory = ConfigurationManager.AppSettings["tvShowDirectory"];
+                tvShowDestinationDirectory = ConfigurationManager.AppSettings["tvhShowOutputDirectory"];
             }
             catch (ConfigurationErrorsException e)
             {
@@ -27,14 +43,33 @@ namespace HandBrakeEncoder
             }
         }
 
+        private void InitializeSearchers()
+        {
+            movieFileSearcher = new FileSearcher(movieSerahDirectory, movieDestinationDirectory, MediaType.Movie);
+            tvShowFileSearcher = new FileSearcher(tvShowSearchDirectory, tvShowDestinationDirectory, MediaType.TvShow);
+        }
+
         protected override void OnStart(string[] args)
         {
-            fileSearcher.StartWorkerThread();
+            StartFileSearchers();
+        }
+
+        private void StartFileSearchers()
+        {
+            movieFileSearcher.StartWorkerThread();
+            tvShowFileSearcher.StartWorkerThread();
         }
 
         protected override void OnStop()
         {
-            fileSearcher.StopWorkerThread(true);
+            StopFileSearchers();
+            HandBrakeEncoderProcessor.StopProcessor();
+        }
+
+        private void StopFileSearchers()
+        {
+            movieFileSearcher.StopWorkerThread();
+            tvShowFileSearcher.StopWorkerThread();
         }
     }
 }

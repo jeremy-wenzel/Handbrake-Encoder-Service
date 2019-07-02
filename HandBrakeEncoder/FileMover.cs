@@ -14,25 +14,9 @@ namespace HandBrakeEncoder
         private HandBrakeEventLogger eventLog = HandBrakeEventLogger.GetInstance();
 
         /// <summary>
-        /// Starts a worker thread, which will begin looking
-        /// </summary>
-        public void StartWorkerThread()
-        {
-            lock (workerThreadLock)
-            {
-                if (workerThread == null || !workerThread.IsAlive)
-                {
-                    // Only start worker thread if no worker thread currently exists
-                    workerThread = new Thread(new ThreadStart(Move));
-                    workerThread.Start();
-                }
-            }
-        }
-
-        /// <summary>
         /// Stops the worker thread
         /// </summary>
-        public void StopWorkerThread()
+        private void StopWorkerThread()
         {
             lock (workerThreadLock)
             {
@@ -52,6 +36,23 @@ namespace HandBrakeEncoder
             lock (workItems)
             {
                 workItems.Enqueue(workItem);
+            }
+            StartWorkerThread();
+        }
+
+        /// <summary>
+        /// Starts a worker thread, which will begin looking
+        /// </summary>
+        private void StartWorkerThread()
+        {
+            lock (workerThreadLock)
+            {
+                if (workerThread == null || !workerThread.IsAlive)
+                {
+                    // Only start worker thread if no worker thread currently exists
+                    workerThread = new Thread(new ThreadStart(Move));
+                    workerThread.Start();
+                }
             }
         }
 
