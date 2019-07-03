@@ -8,7 +8,7 @@ namespace HandBrakeEncoder
     {
         private static int MOVER_SLEEP_TIMER_MS = 5000; // 5 seconds
 
-        private volatile Queue<HandBrakeWorkItem> workItems = new Queue<HandBrakeWorkItem>();
+        private volatile Queue<FileMoverWorkItem> workItems = new Queue<FileMoverWorkItem>();
         private Thread workerThread = null;
         private volatile object workerThreadLock = new object();
         private HandBrakeEventLogger eventLog = HandBrakeEventLogger.GetInstance();
@@ -31,7 +31,7 @@ namespace HandBrakeEncoder
         /// Adds a work item to be processed
         /// </summary>
         /// <param name="workItem"></param>
-        public void AddWorkItem(HandBrakeWorkItem workItem)
+        public void AddWorkItem(FileMoverWorkItem workItem)
         {
             lock (workItems)
             {
@@ -56,13 +56,6 @@ namespace HandBrakeEncoder
             }
         }
 
-        public void Dispose()
-        {
-            StopWorkerThread();
-            
-            // Should go through and log all the files that haven't been encoded yet. Maybe a database?
-        }
-
         /// <summary>
         /// 
         /// </summary>
@@ -70,7 +63,7 @@ namespace HandBrakeEncoder
         {
             while (true)
             {
-                HandBrakeWorkItem workItem = null;
+                FileMoverWorkItem workItem = null;
                 lock (workItems)
                 {
                     if (workItems.Peek() != null) 
@@ -89,9 +82,23 @@ namespace HandBrakeEncoder
                 eventLog.WriteEntry("Found item to move.");
 
                 // Do stuff with the file
+                CopyFile(workItem);
 
                 eventLog.WriteEntry("Finished moving item");
-            }
+            }   
         }
+
+        private void CopyFile(FileMoverWorkItem workItem)
+        {
+            System.IO.File.Copy(workItem.EncodedFilePath, workItem.DestinationFilePath, true);
+        }
+
+        public void Dispose()
+        {
+            StopWorkerThread();
+
+            // Should go through and log all the files that haven't been encoded yet. Maybe a database?
+        }
+
     }
 }

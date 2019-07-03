@@ -13,7 +13,7 @@ namespace HandBrakeEncoder
 
         private static readonly HandBrakeEventLogger logger = HandBrakeEventLogger.GetInstance();
 
-        private string movieSerahDirectory;
+        private string movieSearchDirectory;
         private string movieDestinationDirectory;
         private string tvShowSearchDirectory;
         private string tvShowDestinationDirectory;
@@ -21,8 +21,14 @@ namespace HandBrakeEncoder
         public HandBrakeEncoderService()
         {
             InitializeComponent();
+            InitializeProcessor();
             InitializeSettings();
             InitializeSearchers();
+        }
+
+        private void InitializeProcessor()
+        {
+            HandBrakeEncoderProcessor.SetCommandLineArguments(new HandBrakeArguements());
         }
 
         private void InitializeSettings()
@@ -31,7 +37,7 @@ namespace HandBrakeEncoder
            
             try
             {
-                movieSerahDirectory = ConfigurationManager.AppSettings["movieDirectory"];
+                movieSearchDirectory = ConfigurationManager.AppSettings["movieDirectory"];
                 movieDestinationDirectory = ConfigurationManager.AppSettings["movieOutputDirectory"];
                 tvShowSearchDirectory = ConfigurationManager.AppSettings["tvShowDirectory"];
                 tvShowDestinationDirectory = ConfigurationManager.AppSettings["tvhShowOutputDirectory"];
@@ -45,7 +51,7 @@ namespace HandBrakeEncoder
 
         private void InitializeSearchers()
         {
-            movieFileSearcher = new FileSearcher(movieSerahDirectory, movieDestinationDirectory, MediaType.Movie);
+            movieFileSearcher = new FileSearcher(movieSearchDirectory, movieDestinationDirectory, MediaType.Movie);
             tvShowFileSearcher = new FileSearcher(tvShowSearchDirectory, tvShowDestinationDirectory, MediaType.TvShow);
         }
 

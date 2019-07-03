@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Threading;
 
 namespace HandBrakeEncoder
@@ -24,9 +26,25 @@ namespace HandBrakeEncoder
 
         private static readonly HandBrakeEncoderProcessor processor = new HandBrakeEncoderProcessor();
 
+        private volatile HandBrakeArguements arguments = new HandBrakeArguements();
+
         private HandBrakeEncoderProcessor()
         {
 
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="arguments"></param>
+        public static void SetCommandLineArguments(HandBrakeArguements arguments)
+        {
+            if (arguments == null)
+            {
+                throw new ArgumentNullException("Arguments should not be null");
+            }
+
+            processor.arguments = arguments;
         }
 
         /// <summary>
@@ -108,21 +126,50 @@ namespace HandBrakeEncoder
         private void EncodeAndSendToFileMover(HandBrakeWorkItem workItem)
         {
             // Do the encoding
+            string encodedFilePath = GetEncodedFilePath(workItem.OriginalFilePath);
+            Process process = SetupProcessWithStartInfo(workItem.OriginalFilePath, encodedFilePath);
+            process.Start();
+            process.WaitForExit();
 
             // Send the workitem to the filemover to actually move the file
-            SendWorkItemToFileMover(workItem);
+            string destinationPath = GetDestinationPathFromEncodeFile(encodedFilePath, workItem.DestinationDirectory);
+            SendWorkItemToFileMover(encodedFilePath, destinationPath);
+        }
+
+        private string GetEncodedFilePath(string originalFilePath)
+        {
+            // TODO: Might think about moving to HandbrakeWorkItem?
+            string directory = Path.GetDirectoryName(originalFilePath);
+            string originalFileName = Path.GetFileNameWithoutExtension(originalFilePath);
+            return Path.Combine(directory, $"{originalFileName}.mp4");
+        }
+
+        private Process SetupProcessWithStartInfo(string originalFilePath, string encodedFilePath)
+        {
+            Process process = new Process();
+            ProcessStartInfo startInfo = new ProcessStartInfo();
+            startInfo.FileName = HandBrakeArguements.COMMAND;
+            startInfo.Arguments = arguments.GenerateArguments(originalFilePath, encodedFilePath);
+            logger.WriteEntry($"Process command line args = {startInfo.Arguments}");
+            return process;
+        }
+
+        private string GetDestinationPathFromEncodeFile(string encodeFilePath, string destinationDirectory)
+        {
+            string encodedFileName = Path.GetFileName(encodeFilePath);
+            return Path.Combine(destinationDirectory, encodedFileName);
         }
 
         /// <summary>
         /// Sends the work item to the file mover
         /// </summary>
         /// <param name="workItem">The workItem containing the necessary information to begin moving the file</param>
-        private void SendWorkItemToFileMover(HandBrakeWorkItem workItem)
+        private void SendWorkItemToFileMover(string encodedFilePath, string destinationFilePath)
         {
             lock (fileMover)
             {
                 // Just in case
-                fileMover.AddWorkItem(workItem);
+                fileMover.AddWorkItem(new FileMoverWorkItem(encodedFilePath, destinationFilePath));
             }
         }
 

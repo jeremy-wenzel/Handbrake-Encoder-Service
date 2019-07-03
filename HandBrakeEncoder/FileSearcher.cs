@@ -66,9 +66,19 @@ namespace HandBrakeEncoder
                 // Found some items. Begin adding them to the queue
                 foreach (string filePath in files)
                 {
-                    HandBrakeEncoderProcessor.AddWorkItem(new HandBrakeWorkItem(filePath, destinationDirectory, expectedMediaType));
+                    HandBrakeEncoderProcessor.AddWorkItem(
+                        new HandBrakeWorkItem(
+                            filePath, 
+                            GetDestinationDirectoryFromFile(filePath), 
+                            expectedMediaType));
                 }
             }
+        }
+
+        private string GetDestinationDirectoryFromFile(string filePath)
+        {
+            // TODO: This should be based on the media type as well.
+            return destinationDirectory;
         }
 
         /// <summary>

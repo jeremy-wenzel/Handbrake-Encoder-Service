@@ -1,4 +1,7 @@
-﻿namespace HandBrakeEncoder
+﻿using System.IO;
+using System.Linq;
+
+namespace HandBrakeEncoder
 {
     /// <summary>
     /// The workitem used by the various processor that contains the information
@@ -11,14 +14,9 @@
         /// </summary>
         public string OriginalFilePath { get; private set; }
 
-        /// <summary>
-        /// The path of the encoded file
-        /// </summary>
-        public string EncodedFilePath { get; set; }
-
         public string DestinationDirectory { get; private set; }
 
-        public MediaType MediaType { get; set; }
+        public MediaType MediaType { get; private set; }
 
         public HandBrakeWorkItem(string originalFilePath, string destinationDirectory, MediaType mediaType)
         {
