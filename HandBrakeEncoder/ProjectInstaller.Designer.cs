@@ -28,33 +28,32 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.TestService = new System.ServiceProcess.ServiceProcessInstaller();
-            this.MyTestService = new System.ServiceProcess.ServiceInstaller();
+            this.serviceProcessInstaller1 = new System.ServiceProcess.ServiceProcessInstaller();
+            this.serviceInstaller1 = new System.ServiceProcess.ServiceInstaller();
+            this.serviceProcessInstaller1.Account = System.ServiceProcess.ServiceAccount.LocalSystem;
             // 
-            // TestService
+            // serviceProcessInstaller1
             // 
-            this.TestService.Account = System.ServiceProcess.ServiceAccount.LocalSystem;
-            this.TestService.Password = null;
-            this.TestService.Username = null;
-            this.TestService.AfterInstall += new System.Configuration.Install.InstallEventHandler(this.TestService_AfterInstall);
+            this.serviceProcessInstaller1.Password = null;
+            this.serviceProcessInstaller1.Username = null;
             // 
-            // MyTestService
+            // serviceInstaller1
             // 
-            this.MyTestService.Description = "My First Test Service";
-            this.MyTestService.DisplayName = "MyTestService";
-            this.MyTestService.ServiceName = "Service1";
+            this.serviceInstaller1.ServiceName = "HandBrakeEncoder";
+            this.serviceInstaller1.DisplayName = "HandBrakeEncoder";
+            this.serviceInstaller1.Description = "A service that uses handbrake to begin encoding video files";
             // 
             // ProjectInstaller
             // 
             this.Installers.AddRange(new System.Configuration.Install.Installer[] {
-            this.TestService,
-            this.MyTestService});
+            this.serviceProcessInstaller1,
+            this.serviceInstaller1});
 
         }
 
         #endregion
 
-        private System.ServiceProcess.ServiceProcessInstaller TestService;
-        private System.ServiceProcess.ServiceInstaller MyTestService;
+        private System.ServiceProcess.ServiceProcessInstaller serviceProcessInstaller1;
+        private System.ServiceProcess.ServiceInstaller serviceInstaller1;
     }
 }

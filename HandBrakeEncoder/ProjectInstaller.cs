@@ -15,10 +15,5 @@ namespace HandBrakeEncoder
         {
             InitializeComponent();
         }
-
-        private void TestService_AfterInstall(object sender, InstallEventArgs e)
-        {
-
-        }
     }
 }
