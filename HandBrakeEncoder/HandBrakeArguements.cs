@@ -9,7 +9,7 @@ namespace HandBrakeEncoder
 {
     public class HandBrakeArguements
     {
-        public const string COMMAND = "HandBrakeCLI";
+        public const string COMMAND = @"C:\HandBrakeCLI.exe";
 
         public string GenerateArguments(string originalFilePath, string encodedFilePath)
         {

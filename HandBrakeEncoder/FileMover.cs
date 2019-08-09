@@ -11,7 +11,7 @@ namespace HandBrakeEncoder
         private volatile Queue<FileMoverWorkItem> workItems = new Queue<FileMoverWorkItem>();
         private Thread workerThread = null;
         private volatile object workerThreadLock = new object();
-        private HandBrakeEventLogger eventLog = HandBrakeEventLogger.GetInstance();
+        private static readonly FileLogger logger = FileLogger.GetInstance();
 
         /// <summary>
         /// Stops the worker thread
@@ -66,7 +66,7 @@ namespace HandBrakeEncoder
                 FileMoverWorkItem workItem = null;
                 lock (workItems)
                 {
-                    if (workItems.Peek() != null) 
+                    if (workItems.Count > 0 && workItems.Peek() != null) 
                     { 
                         workItem = workItems.Dequeue();
                     }
@@ -74,17 +74,17 @@ namespace HandBrakeEncoder
 
                 if (workItem == null)
                 {
-                    eventLog.WriteEntry("No item in mover thread. Sleeping");
+                    logger.Log("Mover: No item in mover thread. Sleeping");
                     Thread.Sleep(MOVER_SLEEP_TIMER_MS);
                     continue;
                 }
 
-                eventLog.WriteEntry("Found item to move.");
+                logger.Log("Found item to move.");
 
                 // Do stuff with the file
                 CopyFile(workItem);
 
-                eventLog.WriteEntry("Finished moving item");
+                logger.Log("Finished moving item");
             }   
         }
 

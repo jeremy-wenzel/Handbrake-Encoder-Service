@@ -11,12 +11,12 @@ namespace HandBrakeEncoder
         private FileSearcher movieFileSearcher;
         private FileSearcher tvShowFileSearcher;
 
-        private static readonly HandBrakeEventLogger logger = HandBrakeEventLogger.GetInstance();
-
         private string movieSearchDirectory;
         private string movieDestinationDirectory;
         private string tvShowSearchDirectory;
         private string tvShowDestinationDirectory;
+
+        private static readonly FileLogger logger = FileLogger.GetInstance();
 
         public HandBrakeEncoderService()
         {
@@ -33,8 +33,7 @@ namespace HandBrakeEncoder
 
         private void InitializeSettings()
         {
-            HandBrakeEventLogger.InitLogger("HandBrakeEventLoggerSrc", "HandBrakeEventLoggerLog");
-           
+            logger.Log("Starting Initialize Settings");
             try
             {
                 movieSearchDirectory = ConfigurationManager.AppSettings["movieDirectory"];
@@ -44,7 +43,6 @@ namespace HandBrakeEncoder
             }
             catch (ConfigurationErrorsException e)
             {
-                logger.WriteEntry(e.Message);
                 throw;
             }
         }
@@ -63,7 +61,7 @@ namespace HandBrakeEncoder
         private void StartFileSearchers()
         {
             movieFileSearcher.StartWorkerThread();
-            tvShowFileSearcher.StartWorkerThread();
+            //tvShowFileSearcher.StartWorkerThread();
         }
 
         protected override void OnStop()
@@ -75,7 +73,7 @@ namespace HandBrakeEncoder
         private void StopFileSearchers()
         {
             movieFileSearcher.StopWorkerThread();
-            tvShowFileSearcher.StopWorkerThread();
+            //tvShowFileSearcher.StopWorkerThread();
         }
     }
 }

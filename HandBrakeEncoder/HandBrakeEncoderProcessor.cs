@@ -15,9 +15,10 @@ namespace HandBrakeEncoder
     {
         private const int MAX_CYCLES_FOR_PROCESSING_THREAD = 100;
 
-        private static readonly HandBrakeEventLogger logger = HandBrakeEventLogger.GetInstance();
         private volatile Queue<HandBrakeWorkItem> workItems = new Queue<HandBrakeWorkItem>();
         private volatile object threadLock = new object();
+
+        private FileLogger logger = FileLogger.GetInstance();
 
         private Thread thread = null;
 
@@ -39,12 +40,7 @@ namespace HandBrakeEncoder
         /// <param name="arguments"></param>
         public static void SetCommandLineArguments(HandBrakeArguements arguments)
         {
-            if (arguments == null)
-            {
-                throw new ArgumentNullException("Arguments should not be null");
-            }
-
-            processor.arguments = arguments;
+            processor.arguments = arguments ?? throw new ArgumentNullException("Arguments should not be null");
         }
 
         /// <summary>
@@ -80,6 +76,7 @@ namespace HandBrakeEncoder
             {
                 if (thread == null || !thread.IsAlive)
                 {
+                    logger.Log("Starting Processor Worker Thread");
                     // Only start if the thread isn't alive or if the thread doesn't exist
                     thread = new Thread(new ThreadStart(ProcessWorkQueueAndEncode));
                     thread.Start();
@@ -98,7 +95,7 @@ namespace HandBrakeEncoder
                 HandBrakeWorkItem workItem = null;
                 lock (workItems)
                 {
-                    if (workItems.Peek() != null)
+                    if (workItems.Count > 0 && workItems.Peek() != null)
                     {
                         workItem = workItems.Dequeue();
                     }
@@ -107,15 +104,15 @@ namespace HandBrakeEncoder
                 if (workItem == null)
                 {
                     currentCycle++;
-                    logger.WriteEntry("Didn't find work item. Sleeping");
+                    logger.Log("Didn't find work item. Sleeping");
                     continue;
                 }
 
                 // Found a work item. Beginning Encoding and reset cycle count
                 currentCycle = 0;
-                logger.WriteEntry("Found Work Item. Beginning encoding");
+                logger.Log("Found Work Item. Beginning encoding");
                 EncodeAndSendToFileMover(workItem);
-                logger.WriteEntry("Finished Encodeing");
+                logger.Log("Finished Encodeing");
             }
         }
 
@@ -127,12 +124,14 @@ namespace HandBrakeEncoder
         {
             // Do the encoding
             string encodedFilePath = GetEncodedFilePath(workItem.OriginalFilePath);
+            logger.Log("Encoded file path " + encodedFilePath);
             Process process = SetupProcessWithStartInfo(workItem.OriginalFilePath, encodedFilePath);
             process.Start();
             process.WaitForExit();
 
             // Send the workitem to the filemover to actually move the file
             string destinationPath = GetDestinationPathFromEncodeFile(encodedFilePath, workItem.DestinationDirectory);
+            logger.Log("Destination file path" + destinationPath);
             SendWorkItemToFileMover(encodedFilePath, destinationPath);
         }
 
@@ -141,7 +140,7 @@ namespace HandBrakeEncoder
             // TODO: Might think about moving to HandbrakeWorkItem?
             string directory = Path.GetDirectoryName(originalFilePath);
             string originalFileName = Path.GetFileNameWithoutExtension(originalFilePath);
-            return Path.Combine(directory, $"{originalFileName}.mp4");
+            return Path.Combine(directory, $"encoded\\{originalFileName}.mp4");
         }
 
         private Process SetupProcessWithStartInfo(string originalFilePath, string encodedFilePath)
@@ -150,7 +149,10 @@ namespace HandBrakeEncoder
             ProcessStartInfo startInfo = new ProcessStartInfo();
             startInfo.FileName = HandBrakeArguements.COMMAND;
             startInfo.Arguments = arguments.GenerateArguments(originalFilePath, encodedFilePath);
-            logger.WriteEntry($"Process command line args = {startInfo.Arguments}");
+            startInfo.CreateNoWindow = true;
+            startInfo.UseShellExecute = false;
+            process.StartInfo = startInfo;
+            logger.Log($"Process command line args = {startInfo.Arguments}");
             return process;
         }
 

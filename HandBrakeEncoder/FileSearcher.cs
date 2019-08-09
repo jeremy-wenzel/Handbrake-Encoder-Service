@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Threading;
 
 namespace HandBrakeEncoder
@@ -9,7 +11,7 @@ namespace HandBrakeEncoder
     /// </summary>
     public class FileSearcher
     {
-        private static readonly HandBrakeEventLogger logger = HandBrakeEventLogger.GetInstance();
+        private static readonly FileLogger logger = FileLogger.GetInstance();
         private const int SEARCH_SLEEP_TIME_MS = 5000; // Wait 5 seconds before scanning again.
         private volatile object threadLock = new object();
         private Thread thread = null;
@@ -17,6 +19,8 @@ namespace HandBrakeEncoder
         private volatile string searchDirectory = null;
         private volatile string destinationDirectory = null;
         private volatile MediaType expectedMediaType;
+
+        private HashSet<string> seenFiles = new HashSet<string>();
 
         public FileSearcher(string searchDirectory, string destinationDirectory, MediaType expectedMediaType)
         {
@@ -54,10 +58,11 @@ namespace HandBrakeEncoder
 
             while (true)
             {
-                string[] files = Directory.GetFiles(searchDirectory, ".mkv", SearchOption.AllDirectories);
+                string[] files = Directory.GetFiles(searchDirectory, "*.mkv", SearchOption.AllDirectories);
 
-                if (files == null || files.Length == 0)
+                if (files == null || files.Length == 0 || files.All(p => seenFiles.Contains(p)))
                 {
+                    logger.Log("Couldn't find any files. Sleeping");
                     // Couldn't find any files. Sleep and try again in some time
                     Thread.Sleep(SEARCH_SLEEP_TIME_MS);
                     continue;
@@ -66,11 +71,16 @@ namespace HandBrakeEncoder
                 // Found some items. Begin adding them to the queue
                 foreach (string filePath in files)
                 {
-                    HandBrakeEncoderProcessor.AddWorkItem(
-                        new HandBrakeWorkItem(
-                            filePath, 
-                            GetDestinationDirectoryFromFile(filePath), 
-                            expectedMediaType));
+                    if (!seenFiles.Contains(filePath))
+                    {
+                        logger.Log($"Found file {filePath}");
+                        seenFiles.Add(filePath);
+                        HandBrakeEncoderProcessor.AddWorkItem(
+                            new HandBrakeWorkItem(
+                                filePath,
+                                GetDestinationDirectoryFromFile(filePath),
+                                expectedMediaType));
+                    }
                 }
             }
         }

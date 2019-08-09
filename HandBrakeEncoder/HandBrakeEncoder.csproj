@@ -63,14 +63,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FileLogger.cs" />
     <Compile Include="FileMover.cs" />
     <Compile Include="FileMoverWorkItem.cs" />
     <Compile Include="FileSearcher.cs" />
     <Compile Include="HandBrakeArguements.cs" />
     <Compile Include="HandBrakeEncoderProcessor.cs" />
-    <Compile Include="HandBrakeEventLogger.cs">
-      <SubType>Component</SubType>
-    </Compile>
     <Compile Include="HandBrakeWorkItem.cs" />
     <Compile Include="HandBrakeEncoderService.cs">
       <SubType>Component</SubType>
