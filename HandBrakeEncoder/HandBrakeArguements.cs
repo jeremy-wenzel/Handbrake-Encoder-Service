@@ -20,7 +20,7 @@ namespace HandBrakeEncoder
              */
 
             
-            return $"{GenerateOptionsFlags()} -i {originalFilePath} -o {encodedFilePath}";
+            return $"{GenerateOptionsFlags()} -i \"{originalFilePath}\" -o \"{encodedFilePath}\"";
         }
 
         private string GenerateOptionsFlags()

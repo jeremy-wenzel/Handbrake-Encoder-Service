@@ -6,12 +6,12 @@ namespace HandBrakeEncoder
 {
     public class FileMover : IDisposable
     {
-        private static int MOVER_SLEEP_TIMER_MS = 5000; // 5 seconds
-
+        private static int MAX_SLEEP_INTERVALS = 200;
         private volatile Queue<FileMoverWorkItem> workItems = new Queue<FileMoverWorkItem>();
         private Thread workerThread = null;
         private volatile object workerThreadLock = new object();
         private static readonly FileLogger logger = FileLogger.GetInstance();
+        private static bool IsThreadRunning = false;
 
         /// <summary>
         /// Stops the worker thread
@@ -47,7 +47,7 @@ namespace HandBrakeEncoder
         {
             lock (workerThreadLock)
             {
-                if (workerThread == null || !workerThread.IsAlive)
+                if (!IsThreadRunning)
                 {
                     // Only start worker thread if no worker thread currently exists
                     workerThread = new Thread(new ThreadStart(Move));
@@ -61,24 +61,34 @@ namespace HandBrakeEncoder
         /// </summary>
         private void Move()
         {
+            int counter = 0;
             while (true)
             {
                 FileMoverWorkItem workItem = null;
                 lock (workItems)
                 {
+                    // Get the item
                     if (workItems.Count > 0 && workItems.Peek() != null) 
                     { 
                         workItem = workItems.Dequeue();
                     }
+
+                    if (workItem == null)
+                    {
+                        if (counter == MAX_SLEEP_INTERVALS)
+                        {
+                            // Max running time so notify that we are not using the thread anymore
+                            IsThreadRunning = false;
+                            return;
+                        }
+                        
+                        // Keep looking
+                        counter++;
+                        continue;
+                    }
                 }
 
-                if (workItem == null)
-                {
-                    logger.Log("Mover: No item in mover thread. Sleeping");
-                    Thread.Sleep(MOVER_SLEEP_TIMER_MS);
-                    continue;
-                }
-
+                // We have an item so continue working
                 logger.Log("Found item to move.");
 
                 // Do stuff with the file
